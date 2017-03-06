@@ -1,0 +1,38 @@
+body {
+	background-color: grey;
+}
+
+.click-me {
+	cursor: pointer;
+}
+
+
+
+/***
+    Messages
+            ***/
+
+.alert > h4 {
+    margin: 0;
+}
+
+.alert {
+    width: 80%;
+    text-align: center;
+    position: relative;
+    margin: 10px auto;
+    z-index: 9999;
+}
+
+.alert-dismissible .close {
+    opacity: 1;
+    float: none;
+    margin-left: 50px;
+    vertical-align: middle;
+    top:0;
+    font-size: inherit;
+}
+
+/*.alert-dismissible .close::before {
+    content: "Close";
+}*/

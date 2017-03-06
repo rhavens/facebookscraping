@@ -8,174 +8,117 @@ import json
 import pprint
 import os
 import datetime
+import requests
+from dateutil import parser
 
 app = Flask(__name__, static_url_path='/', static_folder='')
-
-mongo_uri = os.getenv('MONGODB_URI')
-db_name = os.getenv('MONGODB_NAME')
+auth_token = os.getenv('AUTH_TOKEN').strip() # fix bug relating to trailing
+mongo_uri = os.getenv('MONGODB_URI').strip() # whitespace on env variables
+db_name = os.getenv('MONGODB_NAME').strip()
 db = None
 
+# TODO FIX FOR DEBUGGING PURPOSES
+TIME_TO_STALE = 1 # 10 minutes before data becomes stale
+
+
 # if we are running in a heroku environment, or have a shared db, connect to that
-if (mongo_uri): 
+if (mongo_uri):
     with app.app_context():
         assert db_name is not None # I'll eat a sock if this throws an error
         db = MongoClient(mongo_uri)[db_name]
 # else try to connect to local mongo instance
-else: 
+else:
     with app.app_context():
         db = PyMongo(app).db
+
 
 @app.route('/', methods=['GET'])
 def index():
     sys.stdout.flush() # debugging heroku issue where stdout is buffered
-    return app.send_static_file('index.html')
+    return app.send_static_file('static/index.html')
+
 
 @app.route('/js/<path:path>', methods=['GET'])
 def send_js(path):
-    return send_from_directory('js',path)
+    return send_from_directory('js', path)
 
-@app.route('/store_fingerprint', methods=['POST'])
-def store_fingerprint():
-    user_id = request.cookies.get('uid')
-    if (user_id): # ObjectId of None gets converted into an actual ID... lol
-        try:
-            user_id = ObjectId(user_id) # convert uid to objectid
-        except:
-            user_id = None
 
-    content = request.get_json(silent=True, force=True)
+@app.route('/css/<path:path>', methods=['GET'])
+def send_css(path):
+    return send_from_directory('css', path)
 
-    # required fields
-    if ('fingerprint' not in content or 'components' not in content or 'action' not in content):
-        return json.dumps({'error':True}), 400, {'ContentType':'application/json'}
 
-    fingerprint = content['fingerprint']
+@app.route('/data-refresh', methods=['GET'])
+def refresh_data():
+    mydata = db.fbdata.find()
+    # if we have a recorded previous update time...
+    if (mydata.count()):
+        # double-check to make sure we have the proper key in the DB response
+        if 'updated_time' in mydata[0]:
+            # check to see if data is stale
+            if (datetime.datetime.now() - parser.parse(mydata[0]['updated_time'])).total_seconds() < TIME_TO_STALE:
+                return make_response(json.dumps(
+                    {
+                        'data': mydata[0]['data'],
+                        'updated_time': mydata[0]['updated_time']
+                    }, default=json_util.default),
+                    200, {'ContentType': 'application/json'})
 
-    user_cursor = None
-    # user has been assigned a tracking cookie so we can trace changes
-    # in their fingerprint
-
-    if (user_id):
-        user_cursor = db.users.find({'_id': user_id})
-        if user_cursor.count() == 0:
-            # user entry is bad, this is an attempt at hijacking the cookie
-            return json.dumps({'error':True, 'id':str(user_id)}), 400, {'ContentType':'application/json'}
-        else:
-            # found a user
-            user_entry = user_cursor[0]
-            # track fingerprint changes
-            if (user_cursor[0]['fingerprint'] != fingerprint):
-                log_activity(user_id, 'Fingerprint changed from ' + user_cursor[0]['fingerprint'] + ' to ' + fingerprint)
-                change_fingerprint(user_id, 
-                    fingerprint, json.dumps(content['components']), 
-                    user_cursor[0]['fingerprint'], user_cursor[0]['components'])
-
-            if (content['action'] == 'check'):
-                log_activity(user_id, 'Visited the page again')
-            elif (content['action'] == 'activity'):
-                log_activity(user_id, content['activity'])
-
-            return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
-
-    user_cursor = db.users.find({'fingerprint':fingerprint})
-    n_records = user_cursor.count()
-
-    if n_records:
-        if (n_records > 1):
-            print 'Multiple users with this fingerprint %s' % fingerprint
-            # no idea how to handle this yet, so return "Not Implemented"
-            return json.dumps({'success':False,'error':False}), 501, {'ContentType':'application/json'}
-        else:
-            # user is trying to dodge system by deleting their cookie, but we
-            # found them! (or it could be a different user with the same fingerprint
-            # but we will ignore that for now)
-            user_id = user_cursor[0]['_id'] # reset user id to make new cookie
-            log_activity(user_id, 'Tried to dodge tracking by unsetting cookie')
-
-            if (content['action'] == 'check'):
-                log_activity(user_id, 'Visited the page again')
-            elif (content['action'] == 'activity'):
-                log_activity(user_id, content['activity'])
-
-            print 'Found matching fingerprint for this user %s' % fingerprint
-    else:
-        print 'New fingerprint %s' % fingerprint
-
+    # fallback: fetch new data
+    new_data = fetch_data()
+    if (new_data):
         to_insert = {
-                # id is implicit, assuming unique fingerprints for everyone
-                'fingerprint':fingerprint,
-                'components':json.dumps(content['components']),
-                'activity_log':[{
-                    'activity': 'First encounter', 
-                    'time': datetime.datetime.utcnow()
-                    }],
-                'old_fingerprints': [],
-                'created_at':datetime.datetime.utcnow(),
-                'updated_at':datetime.datetime.utcnow()
+            'updated_time': str(datetime.datetime.now()),
+            'data': json.dumps(new_data, default=json_util.default)
         }
-
-        user_id = db.users.insert(to_insert)
-
-    print user_id
-    resp = make_response(json.dumps({'success':True}), 200, {'ContentType':'application/json'})
-    resp.set_cookie('uid', str(user_id))
-    return resp
-
-@app.route('/view_fingerprint/<fingerprint>', methods=['GET'])
-def view_fingerprint_data(fingerprint):
-    user_id = request.cookies.get('uid')
-    if (user_id): # ObjectId of None gets converted into an actual ID... lol
-        try:
-            user_id = ObjectId(user_id) # convert uid to objectid
-        except:
-            user_id = None
-
-    user = db.users.find({'fingerprint':fingerprint})
-
-    if user_id:
-        viewing_user = db.users.find({'_id': user_id})
-        if viewing_user.count():
-            log_activity(user_id, 'Viewed fingerprint data for ' + fingerprint)
-            
-
-    if user.count():
-        # assuming no multiples
-        # http://stackoverflow.com/questions/11875770/how-to-overcome-datetime-datetime-not-json-serializable-in-python
-        resp = make_response(json.dumps(user[0], default=json_util.default), 200, {'ContentType':'application/json'})
+        # either insert new data or update old if it exists
+        # try to minimize db size by replacing old data
+        db.fbdata.update({},
+                         {'$set': to_insert},
+                         upsert=True)
+        return make_response(json.dumps(
+            {
+                'data': to_insert['data'],
+                'updated_time': to_insert['updated_time']
+            }, default=json_util.default),
+            200, {'ContentType': 'application/json'})
+    # welp, something went wrong
     else:
-        resp = make_response(json.dumps({'error':'Not found'}), 404, {'ContentType':'application/json'})
+        return make_response(json.dumps({'error': 'An error occurred fetching data'}), 500, {'ContentType': 'application/json'})
 
-    return resp
 
-def log_activity(user_id, activity):
-    db.users.update(
-        {'_id': user_id},
-        {'$set': {
-            'updated_at':datetime.datetime.utcnow()
-            },
-        '$addToSet': {
-            'activity_log': {
-                'activity': activity,
-                'time': datetime.datetime.utcnow()
-                }
-            }
-        })
+# fetch data from FB
+# TODO complete the fetch by using the cursors
+# TODO reset the expiry timer
+# TODO add a retry in case of failures
+# TODO send partial data to the users in chunks? maybe? worth it? it does take a while to refresh data
+"""
+    perhaps I can send the old data to the users while initiating the request for
+    new data on the backend, ensuring via locks that only one request is initiated at
+    a time. don't store data in the DB until it's all there.
+    find a way to invalidate cache is also useful
+"""
+def fetch_data():
+    url_to_get = ("https://graph.facebook.com/v2.8/1850066501928133/feed?fields="
+                  "id,type,from,link,message,message_tags,name,object_id,picture,"
+                  "status_type,story,updated_time,created_time,comments{id,from,"
+                  "like_count,message,message_tags},reactions{id,name,type},"
+                  "full_picture,parent_id,attachments{url,type,description,media}"
+                  "&access_token=") + auth_token
+    data = None
+    print url_to_get
+    try:
+        print 'making a request'
+        response = requests.get(url_to_get)
+        print response
+        data = json.loads(response.text)
+        # assert response.ok
+    except:
+        print 'An error occurred'
+        print sys.exc_info()
 
-def change_fingerprint(user_id, fingerprint, components, old_fingerprint, old_components):
-    db.users.update(
-        {'_id': user_id},
-        {'$set': {
-            'fingerprint': fingerprint,
-            'components': components
-            },
-        '$addToSet': {
-            'old_fingerprints': {
-                'fingerprint': old_fingerprint,
-                'components': old_components,
-                'changed_at': datetime.datetime.utcnow()
-                }
-            }
-        })
+    return data
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
