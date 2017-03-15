@@ -71,6 +71,7 @@
 		// handle error TODO add retries
 		function refreshError(jqXHR, textStatus, errorThrown) {
 			refreshPending = false;
+			console.log('refreshError')
 			displayMessage('danger', 'Error', 'Something went wrong while fetching the data.');
 		}
 
