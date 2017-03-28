@@ -11,10 +11,13 @@ import sys
 import json
 import pprint
 import os
-import datetime
 import requests
+# for compressed storage in mongo
 import base64
 import zlib
+# for handling time
+import datetime
+import pytz
 from dateutil import parser
 from copy import deepcopy
 
@@ -30,7 +33,7 @@ db = None
 
 # TODO FIX FOR DEBUGGING PURPOSES
 # this is in seconds
-TIME_TO_STALE = 600000 # 600 seconds / 10 minutes before data becomes stale
+TIME_TO_STALE = 60000 # 600 seconds / 10 minutes before data becomes stale
 # prevent multiple calls to refresh data - return a helpful notice to clients
 # requesting fresh data while the refresh is locked
 DATA_REFRESH_LOCK = 0
@@ -39,10 +42,17 @@ FB_LIMIT = 25
 # standard dictionary for tallying Facebook reactions
 # TODO handle additional cases
 REACTION_DICT = {'LIKE': 0, 'LOVE': 0, 'HAHA': 0, 'WOW': 0, 'SAD': 0, 'ANGRY': 0}
+# Timezone pre-allocations
+TZ_US_EASTERN = pytz.timezone('US/Eastern')
+# Whether to anonymize data
+# Will always be true in production
+ANONYMIZE = (os.getenv('ANONYMIZE').strip() == '1')
+# Running environment
+RUNNING_ENVIRONMENT = os.getenv('RUNNING_ENVIRONMENT').strip()
 
 
 # if we are running in a heroku environment, or have a shared db, connect to that
-if (mongo_uri):
+if (mongo_uri and RUNNING_ENVIRONMENT == 'production'):
     with app.app_context():
         assert db_name is not None # I'll eat a sock if this throws an error
         db = MongoClient(mongo_uri)[db_name]
@@ -141,11 +151,13 @@ def refresh_data():
     else:
         DATA_REFRESH_LOCK = 1
         new_data = fetch_data()
-        data_string = json.dumps(new_data, default=json_util.default)
         if (new_data):
+            if (ANONYMIZE):
+                anonymize_data(new_data)
+            data_string = json.dumps(new_data, default=json_util.default)
             to_insert = {
                 'updated_time': str(datetime.datetime.now()),
-                'data': compress_data(data_string)
+                'data': compress_data(data_string),
             }
             # either insert new data or update old if it exists
             # try to minimize db size by replacing old data
@@ -195,32 +207,30 @@ def fetch_data():
     print 'making a request'
     response = requests.get(url_to_get)
     print response
-    assert response.ok
-    data = json.loads(response.text)
-    load_all_posts(posts, data)
-    load_likes_for_all_posts(posts, 0)
-    clean_posts_of_tokens(posts)
-    # except:
-        # print 'An error occurred'
-        # print sys.exc_info()
 
-    print posts[0]
-    print
+    if (response.ok):
+        data = json.loads(response.text)
+        load_all_posts(posts, data)
+        load_likes_for_all_posts(posts, 0)
+        preprocess_posts(posts)
 
     return posts
 
 
 # removes pagination links, which contain access tokens, which is no bueno
-def clean_posts_of_tokens(posts):
+# also converts timestamps into eastern time
+def preprocess_posts(posts):
     fields = ['comments', 'reactions']
     for post in posts:
+        # convert to eastern
+        if 'created_time' in post:
+            post['created_time'] = str(parser.parse(post['created_time']).astimezone(TZ_US_EASTERN))
+        # remove pagination fields from related entries
         for field in fields:
             if field in post:
                 if 'paging' in post[field]:
-                    if 'next' in post[field]['paging']:
-                        post[field]['paging']['next'] = ''
-                    if 'previous' in post[field]['paging']:
-                        post[field]['paging']['previous'] = ''
+                    del post[field]['paging']
+
 
 # loads all posts by using the pagination cursor
 # posts is an empty object modified by this function
@@ -278,6 +288,7 @@ def load_likes_for_post(post_object):
             break
         # with no errors, we can safely add our new data to the total counts
         total_reactions += len(reactions_object['data'])
+        post_object['reactions']['data'] += reactions_object['data']
         for r in reactions_object['data']:
             reactions[r['type']] += 1
         # handle another error
@@ -307,6 +318,35 @@ def compress_data(data):
 
 def decompress_data(data_string):
     return zlib.decompress(base64.b64decode(data_string))
+
+
+# if we're going to make interactive visualizations we will need to expose the data
+#   to the client-side, which is dangerous without first anonymizing it
+def anonymize_data(data):
+    posters = dict()
+    n_posters = 0
+    from_id = ''
+    for d in data:
+        if 'comments' in d:
+            del d['comments'] # TODO whenever I get around to adding comments, fix this
+        # anonymize poster names while keeping references intact
+        # turns out that IDs are actually scoped within groups, so it is safe to leave IDs
+        #   since the only people who can cross-reference them would already have access to
+        #   all the data, not just this data that I'm getting
+        d['from']['name'] = 'Private'
+        # however I wouldn't want people to be able to cross-reference posters with the posts
+        #   they've liked so easily, so let's make that more anonymous by using serial IDs
+        from_id = d['from']['id']
+        if from_id in posters:
+            d['from']['id'] = posters[from_id]
+        else:
+            posters[from_id] = n_posters
+            d['from']['id'] = n_posters
+            n_posters += 1
+        # anonymize reactions
+        if ('reactions' in d and 'data' in d['reactions']):
+            for r in d['reactions']['data']:
+                r['name'] = 'Private'
 
 
 
