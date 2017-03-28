@@ -253,6 +253,148 @@
 			// this.tags = []; // list of people they tag in posts as {personID, postIdx}
 			// TODO add more fields
 		}
+
+		var colorarr = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", 
+		                    "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", 
+		                    "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", 
+		                    "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"];
+		nodecolorfun = function(idx) { return colorarr[idx%20]};
+
+		// function visualizeSocialNetwork() {
+		// 	var NODE_RADIUS = 12;
+		// 	var LINK_ARROW_OFFSET = 9;
+		// 	var LINK_ARROW_RADIUS_RATIO = 1.2;
+		// 	var nodeFillColor = nodecolorfun;
+
+		// 	var boundingbox = d3.select('#canvas').node().getBoundingClientRect();
+		// 	var width = boundingbox.width;
+		// 	var height = boundingbox.height;
+
+		// 	var svg = d3.select('#canvas').append('svg')
+		// 	    .attr('width', width)
+		// 	    .attr('height', height);
+
+		// 	var container = svg.append('rect')
+		// 	    .attr('width', width)
+		// 	    .attr('height', height)
+		// 	    .style('fill', 'none')
+		// 	    .style('pointer-events', 'all');
+
+		// 	var group = svg.append('g');
+		// 	var linkgroup = group.append('g');
+		// 	var nodeHighlight = group.append('rect')
+		// 	    .attr('width',NODE_RADIUS*4)
+		// 	    .attr('height',NODE_RADIUS*4)
+		// 	    .attr('fill-opacity', 0)
+		// 	    .style('fill', function(d) { return nodeFillColor(0)});
+		// 	var nodegroup = group.append('g');
+
+		// 	var links = [];
+		// 	var nodes = [];
+
+		// 	var root;
+
+		// 	d3.entries(global_data['people']).forEach(function(v,k) {
+		// 		nodes.push({
+		// 			name: v.value.name,
+		// 			id: v.value.id,
+		// 			fixed: false,
+		// 			person: global_data['people'][v.value.id], 
+		// 			r: NODE_RADIUS,
+		// 			children_links: [],
+		// 			parent_links: [],
+		// 		});
+		// 	});
+
+		// 	root = nodes[0];
+
+		// 	// TODO fix this
+		// 	d3.entries(global_data['people']).forEach(function(v,k) {
+		// 		var sourceNode = nodes.filter(function (n) {
+		// 		    return n.name === v.value.Source;
+		// 		})[0];
+		// 		var targetNode = nodes.filter(function (n) {
+		// 		    return n.name === v.value.Target;
+		// 		})[0];
+		// 		var newLink = {
+		// 		    id: v.value.ID,
+		// 		    source: sourceNode, 
+		// 		    target: targetNode, 
+		// 		    type: v.value.Type, 
+		// 		    relationship_element: Globals.RelationshipElements[v.value.ID],
+		// 		    vis: true
+		// 		};
+		// 		links.push(newLink);
+		// 		sourceNode.children_links.push(newLink);
+		// 		targetNode.parents_links.push(newLink);
+		// 	});
+
+		// 	var n = nodes.length;
+		// 	nodes.forEach(function(d, i) {
+		// 	  d.x = d.y = height - width / n * i;
+		// 	});
+
+		// 	var force = d3.layout.force()
+		// 	    .nodes(nodes) // the nodes in the force object
+		// 	    .links(links) // the links in the force object
+		// 	    .size([width, height]) // the size of the force diagram
+		// 	                             // height is longer so gravity drags out graph
+		// 	    // .linkStrength(2) // not useful
+		// 	    // .friction(0.3) // default value is best
+		// 	    .linkDistance(function(d) { if (d.source.fixed || d.target.fixed) {
+		// 	            return 100; // pop the children out
+		// 	        }   else return 60;
+		// 	    })
+		// 	    // helps nodes with lots of children keep clear of clutter
+		// 	    .charge(function(d) { return -30*d.weight - 300; })
+		// 	    .chargeDistance(5000)
+		// 	    .gravity(0.01)
+		// 	    .theta(0.8)
+		// 	    // .alpha(0.1)
+
+		// 	var defs = svg.append('svg:defs');
+		// 	defs.selectAll('marker')
+		// 	    .data([1])      // Different link/path types can be defined here
+		// 	  .enter().append('svg:marker')    // This section adds in the arrows
+		// 	    .attr('id', function(d) { return d; })
+		// 	    .attr('viewBox', '0 -5 10 10')
+		// 	    .attr('refX', function(d) { 
+		// 	        return d[1] * NODE_RADIUS *
+		// 	            LINK_ARROW_RADIUS_RATIO + 
+		// 	            LINK_ARROW_OFFSET
+		// 	     })
+		// 	    .attr('refY', 0)
+		// 	    .attr('markerWidth', 6)
+		// 	    .attr('markerHeight', 6)
+		// 	    .attr('orient', 'auto')
+		// 	    .attr('fill',function(d) { return linkStrokeColor(Globals.RelationshipTypes.indexOf(d[0]))})
+		// 	  .append('svg:path')
+		// 	    .attr('d', 'M0,-5L10,0L0,5');
+
+		// 	/*** Drag handlers section ***/
+		// 	var dragStart = function(d) {
+		// 	    // noop
+		// 	}
+
+		// 	// sets fixed state after drag
+		// 	var dragEnd = function(d) { 
+		// 	    var e = d3.event.sourceEvent;
+		// 	    if (e.defaultPrevented || e.which == 3) return;
+		// 	    e.stopPropagation();
+		// 	    NodeView.currentlySelectedResource = d3.select(this).data()[0];
+
+		// 	    if (e.ctrlKey || e.shiftKey) {
+		// 	        d3.select(this).classed('fixed', d.fixed = true)
+		// 	    } else {
+		// 	        d3.select(this).classed('fixed', d.fixed = false)
+		// 	    }
+		// 	}
+
+		// 	// create drag handler (for nodes)
+		// 	var drag = force.drag()
+		// 	    .on('dragstart', dragStart)
+		// 	    .on('dragend', dragEnd);
+		// }
 	});
 
 	/***
