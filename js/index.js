@@ -69,6 +69,7 @@
 
 		// handle error TODO add retries
 		function refreshError(jqXHR, textStatus, errorThrown) {
+			console.log(jqXHR, textStatus, errorThrown);
 			$.ajax({
 				url: '/data-refresh',
 				contentType: 'text/plain',
@@ -103,6 +104,7 @@
 		function newDataReqFailure(jqXHR, textStatus, errorThrown) {
 			refreshPending = false;
 			console.log('newDataReqFailure');
+			console.log(jqXHR, textStatus, errorThrown);
 			displayMessage('danger', 'Error', 'Something went wrong while fetching the data.');
 		}
 

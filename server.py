@@ -2,7 +2,7 @@
 # Dependencies
 ###############################################################################
 
-from flask import Flask, request, send_from_directory, make_response
+from flask import Flask, request, send_from_directory, make_response, stream_with_context, Response
 from flask.ext.pymongo import PyMongo, MongoClient
 from bson.objectid import ObjectId # solve bug: string ID =/= object ID
 from bson import json_util
@@ -12,6 +12,7 @@ import json
 import pprint
 import os
 import requests
+import csv
 # for compressed storage in mongo
 import base64
 import zlib
@@ -33,7 +34,7 @@ db = None
 
 # TODO FIX FOR DEBUGGING PURPOSES
 # this is in seconds
-TIME_TO_STALE = 60000 # 600 seconds / 10 minutes before data becomes stale
+TIME_TO_STALE = 60 # 600 seconds / 10 minutes before data becomes stale
 # prevent multiple calls to refresh data - return a helpful notice to clients
 # requesting fresh data while the refresh is locked
 DATA_REFRESH_LOCK = 0
@@ -127,6 +128,8 @@ def check_data():
                     200, {'ContentType': 'application/json'})
             # data is stale, send a hint to client so it can wait a backoff time and make a new request
             else:
+                if RUNNING_ENVIRONMENT == 'development':
+                    write_to_csv(json.loads(data))
                 return make_response(json.dumps(
                     {
                         'data': data,
@@ -150,31 +153,8 @@ def refresh_data():
                              202, {'ContentType': 'application/json'})
     else:
         DATA_REFRESH_LOCK = 1
-        new_data = fetch_data()
-        if (new_data):
-            if (ANONYMIZE):
-                anonymize_data(new_data)
-            data_string = json.dumps(new_data, default=json_util.default)
-            to_insert = {
-                'updated_time': str(datetime.datetime.now()),
-                'data': compress_data(data_string),
-            }
-            # either insert new data or update old if it exists
-            # try to minimize db size by replacing old data
-            db.fbdata.update({},
-                             {'$set': to_insert},
-                             upsert=True)
-            DATA_REFRESH_LOCK = 0
-            return make_response(json.dumps(
-                {
-                    'data': data_string,
-                    'updated_time': to_insert['updated_time']
-                }, default=json_util.default),
-                200, {'ContentType': 'application/json'})
-        # welp, something went wrong
-        else:
-            DATA_REFRESH_LOCK = 0
-            return make_response(json.dumps({'error': 'An error occurred fetching data'}), 404, {'ContentType': 'application/json'})
+
+        return Response(stream_with_context(fetch_data()))
 
 
 ###############################################################################
@@ -201,7 +181,7 @@ def fetch_data():
     #               "full_picture,parent_id,attachments{url,type,description,media}"
     #               "&access_token=") + auth_token
     data = None
-    posts = []
+    posts = None
     print url_to_get
     # try:
     print 'making a request'
@@ -209,49 +189,79 @@ def fetch_data():
     print response
 
     if (response.ok):
+        posters = dict()
+        posters['num_posters'] = 0 # storing length here to avoid 1500+ lookups
+        fields = ['comments', 'reactions']
         data = json.loads(response.text)
-        load_all_posts(posts, data)
-        load_likes_for_all_posts(posts, 0)
-        preprocess_posts(posts)
+        posts = data['data']
+        posts_fully_loaded = 0 # start index for depth-loading operations
+        n_posts = len(posts) # end index
+        yield '{"data":['
+        while (n_posts != posts_fully_loaded):
+            print n_posts
+            print posts_fully_loaded
+            # new method: load full data for an individual post, then yield it, and then load more when we need to
+            for i in xrange(posts_fully_loaded, n_posts):
+                load_likes_for_post(posts[i])
+                if (ANONYMIZE):
+                    anonymize_post(posts[i], posters_dict)
+                preprocess_post(posts[i])
+                yield json.dumps(posts[i], default=json_util.default).decode('utf-8')
+                yield ','
 
-    return posts
+            print posts[n_posts - 1]
+            load_more_posts(data, posts)
+            posts_fully_loaded = n_posts
+            n_posts = len(posts)
+
+        yield '],'
+
+        data_string = json.dumps(posts, default=json_util.default)
+        to_insert = {
+            'updated_time': str(datetime.datetime.now()),
+            'data': compress_data(data_string),
+        }
+        # either insert new data or update old if it exists
+        # try to minimize db size by replacing old data
+        db.fbdata.update({},
+                         {'$set': to_insert},
+                         upsert=True)
+        yield '"updated_time": "' + to_insert['updated_time'] + '"}'
+
+    else:
+        yield '{"error":"something went wrong"}'
+
+    DATA_REFRESH_LOCK = 0
+    print 'done'
 
 
-# removes pagination links, which contain access tokens, which is no bueno
-# also converts timestamps into eastern time
-def preprocess_posts(posts):
+def preprocess_post(post):
     fields = ['comments', 'reactions']
-    for post in posts:
-        # convert to eastern
-        if 'created_time' in post:
-            post['created_time'] = str(parser.parse(post['created_time']).astimezone(TZ_US_EASTERN))
-        # remove pagination fields from related entries
-        for field in fields:
-            if field in post:
-                if 'paging' in post[field]:
-                    del post[field]['paging']
-
+    if 'created_time' in post:
+        post['created_time'] = str(parser.parse(post['created_time']).astimezone(TZ_US_EASTERN))
+    # remove pagination fields from related entries
+    for field in fields:
+        if field in post:
+            if 'paging' in post[field]:
+                del post[field]['paging']
 
 # loads all posts by using the pagination cursor
 # posts is an empty object modified by this function
-def load_all_posts(posts, myData):
-    print 'loading all posts'
-    print myData['data'][0]
-    posts += myData['data']
-    call_count = 0
-    while ('next' in myData['paging']):
-        call_count += 1
-        print call_count
+def load_more_posts(myData, posts):
+    print 'loading more posts'
+    if ('paging' in myData and 'next' in myData['paging']):
+        print 'found more to load'
         response = requests.get(myData['paging']['next'])
-        myData = json.loads(response.text)
-        if 'data' not in myData: # response is bad, may need new token
+        newData = json.loads(response.text)
+        if 'data' not in newData: # response is bad, may need new token
             print "Something went wrong while loading new response"
             print response
-            break
-        posts += myData['data']
-        if 'paging' not in myData:
-            print myData
-            break
+        posts += newData['data']
+        if 'paging' not in newData:
+            print newData
+            del myData['paging']
+        else:
+            myData['paging'] = newData['paging']
 
 
 # convoluted method of loading likes for a post using the pagination object
@@ -296,20 +306,9 @@ def load_likes_for_post(post_object):
             print reactions_object
             break
 
-    print call_count
     # store our counts along with our post
     post_object['reaction_data'] = reactions
     post_object['total_reactions'] = total_reactions
-
-
-# Load likes for all posts given post object and starting index
-# TODO figure out how to run these in parallel
-def load_likes_for_all_posts(posts, start_index=0):
-    for i, p in enumerate(posts):
-        if (i < start_index):
-            continue
-        print "Post #" + str(i + 1)
-        load_likes_for_post(p)
 
 
 def compress_data(data):
@@ -322,31 +321,65 @@ def decompress_data(data_string):
 
 # if we're going to make interactive visualizations we will need to expose the data
 #   to the client-side, which is dangerous without first anonymizing it
-def anonymize_data(data):
-    posters = dict()
-    n_posters = 0
-    from_id = ''
-    for d in data:
-        if 'comments' in d:
-            del d['comments'] # TODO whenever I get around to adding comments, fix this
-        # anonymize poster names while keeping references intact
-        # turns out that IDs are actually scoped within groups, so it is safe to leave IDs
-        #   since the only people who can cross-reference them would already have access to
-        #   all the data, not just this data that I'm getting
-        d['from']['name'] = 'Private'
-        # however I wouldn't want people to be able to cross-reference posters with the posts
-        #   they've liked so easily, so let's make that more anonymous by using serial IDs
-        from_id = d['from']['id']
-        if from_id in posters:
-            d['from']['id'] = posters[from_id]
-        else:
-            posters[from_id] = n_posters
-            d['from']['id'] = n_posters
-            n_posters += 1
-        # anonymize reactions
-        if ('reactions' in d and 'data' in d['reactions']):
-            for r in d['reactions']['data']:
-                r['name'] = 'Private'
+def anonymize_post(d, posters):
+    if 'comments' in d:
+        del d['comments'] # TODO whenever I get around to adding comments, fix this
+    if 'message_tags' in d:
+        del d['message_tags']
+    # anonymize poster names while keeping references intact
+    # turns out that IDs are actually scoped within groups, so it is safe to leave IDs
+    #   since the only people who can cross-reference them would already have access to
+    #   all the data, not just this data that I'm getting
+    d['from']['name'] = 'Private'
+    # however I wouldn't want people to be able to cross-reference posters with the posts
+    #   they've liked so easily, so let's make that more anonymous by using serial IDs
+    from_id = d['from']['id']
+    if from_id in posters:
+        d['from']['id'] = posters[from_id]
+    else:
+        posters[from_id] = posters['num_posters']
+        d['from']['id'] = posters['num_posters']
+        posters['num_posters'] += 1
+    # anonymize reactions
+    if ('reactions' in d and 'data' in d['reactions']):
+        for r in d['reactions']['data']:
+            r['name'] = 'Private'
+
+
+def write_to_csv(data):
+    with open('post_data.csv', 'w') as f:
+        for d in data:
+            if 'attachments' in d:
+                del d['attachments']
+            if 'comments' in d:
+                del d['comments']
+            if 'from' in d:
+                d['from'] = d['from']['name']
+            if 'reactions' in d:
+                del d['reactions']
+            if 'reaction_data' in d:
+                for r_type in d['reaction_data']:
+                    d[r_type] = d['reaction_data'][r_type]
+                del d['reaction_data']
+            if 'message_tags' in d:
+                del d['message_tags']
+            if 'story' in d:
+                del d['story']
+            if 'name' in d:
+                del d['name']
+            if 'parent_id' in d:
+                del d['parent_id']
+
+        print data[0]
+        dw = csv.DictWriter(f, data[0].keys())
+        dw.writeheader()
+        for d in data:
+            for field in d:
+                if isinstance(d[field], basestring):
+                    d[field] = d[field].encode('utf-8')
+                else:
+                    d[field] = str(d[field])
+            dw.writerow(d)
 
 
 
