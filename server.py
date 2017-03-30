@@ -204,7 +204,7 @@ def fetch_data():
             for i in xrange(posts_fully_loaded, n_posts):
                 load_likes_for_post(posts[i])
                 if (ANONYMIZE):
-                    anonymize_post(posts[i], posters_dict)
+                    anonymize_post(posts[i], posters)
                 preprocess_post(posts[i])
                 yield json.dumps(posts[i], default=json_util.default).decode('utf-8')
                 yield ','
