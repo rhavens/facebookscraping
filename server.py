@@ -196,6 +196,7 @@ def fetch_data():
         posts = data['data']
         posts_fully_loaded = 0 # start index for depth-loading operations
         n_posts = len(posts) # end index
+        why_doesnt_json_support_trailing_comma = 0 # bitter af
         yield '{"data":['
         while (n_posts != posts_fully_loaded):
             print n_posts
@@ -206,8 +207,11 @@ def fetch_data():
                 if (ANONYMIZE):
                     anonymize_post(posts[i], posters)
                 preprocess_post(posts[i])
-                yield json.dumps(posts[i], default=json_util.default).decode('utf-8')
-                yield ','
+                if (why_doesnt_json_support_trailing_comma):
+                    yield json.dumps(posts[i], default=json_util.default).decode('utf-8')
+                    why_doesnt_json_support_trailing_comma = 1
+                else:
+                    yield ',' + json.dumps(posts[i], default=json_util.default).decode('utf-8')
 
             print posts[n_posts - 1]
             load_more_posts(data, posts)
@@ -389,4 +393,4 @@ def write_to_csv(data):
 ###############################################################################
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True or (RUNNING_ENVIRONMENT != "production"))
