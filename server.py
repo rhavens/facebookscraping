@@ -34,7 +34,7 @@ db = None
 
 # TODO FIX FOR DEBUGGING PURPOSES
 # this is in seconds
-TIME_TO_STALE = 60 # 600 seconds / 10 minutes before data becomes stale
+TIME_TO_STALE = 6000 # 600 seconds / 10 minutes before data becomes stale
 # prevent multiple calls to refresh data - return a helpful notice to clients
 # requesting fresh data while the refresh is locked
 DATA_REFRESH_LOCK = 0

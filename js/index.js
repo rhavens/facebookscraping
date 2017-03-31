@@ -90,7 +90,7 @@
 				}, 15000); // wait 15 seconds before trying again
 			}
 			else {
-				global_data['posts'] = JSON.parse(data['data']);
+				global_data['posts'] = data['data'];
 				if ('updated_time' in data) {
 					global_data['updated_time'] = data['updated_time'];
 				}
