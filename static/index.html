@@ -1,31 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>I spent way too much time on this</title>
-    <script src="js/jquery-2.2.4.min.js"></script>
-    <script src="//d3js.org/d3.v4.min.js"></script>
+    <title>Statistical Means for Tufts Memes</title>
     <meta charset='utf-8'>
+    <script src="js/jquery-2.2.4.min.js"></script>
+    <!-- visualization library -->
+    <script src="//d3js.org/d3.v4.min.js"></script>
+    <!-- tooltip library extension, from Caged -->
+    <script src="js/d3-tip.js"></script>
     <script src='js/index.js'></script>
-    <link rel='stylesheet' type='text/css' href='css/style.css'>
     <link rel='stylesheet' type='text/css' href='//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css'>
+    <link rel='stylesheet' type='text/css' href='css/style.css'>
 </head>
 <body>
 <div class='message'></div>
 <div id='wrapper'>
-  <h1>Welcome to my website</h1>
-  <p class='click-me' id='data-refresh'>Click me to refresh data</p>
-  <div id='canvas'></div>
+  <h1>TMFQQ Interactive Visualizations</h1>
+  <!-- <p class='click-me' id='data-refresh'>Click me to refresh data</p> -->
+
+  <div id='charts'>
+  </div>
+
   <div id='stats'>
-    <h3>Most frequent poster</h3>
-    <h3 id='most-frequent-poster'></h3>
-    <h3>Most liked poster</h3>
-    <h3 id='most-liked-poster'></h3>
-    <h3>Top liked post</h3>
-    <div id='top-liked-post'></div>
-    <h3>Average likes per post</h3>
-    <h3 id='average-likes-per-post'></h3>
-    <h3>Posts per day</h3>
-    <div id='posts-per-day'></div>
+    <div id='mfp'>
+      <h3>Most frequent poster</h3>
+      <h4 id='most-frequent-poster'></h4>
+      <h4 id='most-frequent-poster-post-count'></h4>
+    </div>
+    <div id='mlp'>
+      <h3>Most liked poster</h3>
+      <h4 id='most-liked-poster'></h4>
+      <h4 id='most-liked-poster-like-count'></h4>
+    </div>
+    <div id='tlp'>
+      <h3>Top liked post</h3>
+      <div id='top-liked-post'></div>
+      <h4 id='top-liked-post-like-count'></h4>
+    </div>
+    <div id='alpp'>
+      <h3>Average likes per post</h3>
+      <h4 id='average-likes-per-post'></h4>
+    </div>
+    <div id='ppd'>
+      <h3>Average posts per day</h3>
+      <h4 id='posts-per-day'></h4>
+    </div>
+    <div id='tpi'>
+      <h3>Total people involved (posting/liking)</h3>
+      <h4 id='total-people-involved'></h4>
+    </div>
+    <div id='tpp'>
+      <h3>Total people posting</h3>
+      <h4 id='total-people-posting'></h4>
+    </div>
+    <div id='tp'>
+      <h3>Total posts</h3>
+      <h4 id='total-posts'></h4>
+    </div>
+    <div id='tl'>
+      <h3>Total likes</h3>
+      <h4 id='total-likes'></h4>
+    </div>
   </div>
 </div>
 </body>

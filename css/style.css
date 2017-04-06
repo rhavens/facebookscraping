@@ -1,10 +1,18 @@
-body {
-	background-color: grey;
-}
-
 .click-me {
 	cursor: pointer;
+    outline: black;
 }
+
+#wrapper {
+    display: inline-block;
+    margin: 10px;
+}
+
+.chart-title {
+    text-align: center;
+}
+
+
 
 
 
@@ -12,12 +20,17 @@ body {
     Messages
             ***/
 
+.message {
+    position: absolute;
+    width: 100%;
+}
+
 .alert > h4 {
     margin: 0;
 }
 
 .alert {
-    width: 80%;
+    width: 40%;
     text-align: center;
     position: relative;
     margin: 10px auto;
@@ -36,3 +49,54 @@ body {
 /*.alert-dismissible .close::before {
     content: "Close";
 }*/
+
+/*
+    d3 graph stuff
+*/
+
+.bar {
+  fill: steelblue;
+}
+
+.bar:hover {
+  fill: brown;
+}
+
+.axis--x path {
+  display: none;
+}
+
+svg {
+    overflow: visible !important; /* this better not bite me later */
+}
+
+/* tooltips */
+
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}

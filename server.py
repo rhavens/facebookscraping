@@ -21,6 +21,9 @@ import datetime
 import pytz
 from dateutil import parser
 from copy import deepcopy
+# for handling multiple requests at once
+from Queue import Queue
+from threading import Thread
 
 ###############################################################################
 # App initialization
@@ -34,7 +37,7 @@ db = None
 
 # TODO FIX FOR DEBUGGING PURPOSES
 # this is in seconds
-TIME_TO_STALE = 6000 # 600 seconds / 10 minutes before data becomes stale
+TIME_TO_STALE = 60000 # 600 seconds / 10 minutes before data becomes stale
 # prevent multiple calls to refresh data - return a helpful notice to clients
 # requesting fresh data while the refresh is locked
 DATA_REFRESH_LOCK = 0
@@ -140,6 +143,48 @@ def check_data():
 
     # something is wrong - database may be uninitialized or corrupted, requires sysadmin intervention
     return make_response(json.dumps({'error': 'An error occurred fetching data'}), 404, {'ContentType': 'application/json'})
+
+
+def crawl(q, result):
+    while not q.empty():
+        work = q.get()                      # fetch new work from the Queue
+        try:
+            data = requests.get(work[1])
+            result[work[0]] = data          # Store data back at correct index
+        except():
+            result[work[0]] = {}
+        # signal to the queue that task has been processed
+        q.task_done()
+    return True
+
+# testing threading
+@app.route('/testing', methods=['GET'])
+def testing():
+    if (RUNNING_ENVIRONMENT == 'development'):
+        def testing_threading():
+            queue = Queue(maxsize=0)
+            urls = ['https://google.com'] * 3 + ['https://tmfqq.herokuapp.com/data-check'] * 2
+            num_threads = 5
+            results = [{} for x in urls]
+            for i in range(len(urls)):
+                queue.put((i, urls[i]))
+
+            # set up the worker threads
+            for i in range(num_threads):
+                print 'Starting thread ' + str(i)
+                worker = Thread(target=crawl, args=(queue, results))
+                worker.setDaemon(True)      # setting threads as "daemon" allows main program to
+                                            # exit eventually even if these dont finish
+                                            # correctly.
+                worker.start()
+             
+            # now we wait until the queue has been processed
+            queue.join()
+            yield 'done'
+             
+        return Response(stream_with_context(testing_threading()))
+    else:
+        return make_response(json.dumps({'invalid': 'testing only'}, 403, {'ContentType': 'application/json'}))
 
 
 # initiate a request to get new data or notify server of busy state
