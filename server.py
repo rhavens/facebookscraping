@@ -197,7 +197,7 @@ def refresh_data():
         return make_response(json.dumps({'lock': '1', 'error': 'Server is busy fetching data'}),
                              202, {'ContentType': 'application/json'})
     else:
-        DATA_REFRESH_LOCK = 1
+        DATA_REFRESH_LOCK = 0 # TODO fix this issue, set to 1
 
         return Response(stream_with_context(fetch_data()))
 

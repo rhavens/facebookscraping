@@ -100,3 +100,12 @@ svg {
   top: 100%;
   left: 0;
 }
+
+.circle {
+    fill: lightsteelblue;
+}
+
+.circle:hover {
+    stroke: blue;
+    stroke-width: 10px;
+}

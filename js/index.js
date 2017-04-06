@@ -406,7 +406,7 @@
 			  .attr('class', 'd3-tip')
 			  .offset([-10, 0])
 			  .html(function(d) {
-			    return "<strong>" + data_name + ":</strong> <span style='color:red'>" + d['value'] + "</span>";
+			    return "<strong>" + to_string(d['key']) + ":</strong> <span style='color:red'>" + d['value'] + "</span>";
 			  });
 
 			svg.call(tip);
@@ -457,7 +457,7 @@
 			    
 		}
 
-		function displayLineGraph(entry_data, data_name, sort_fun) {
+		function displayLineGraph(entry_data, data_name, sort_fun, to_string) {
 			var div = d3.select('#charts');
 			var title = $('#charts').append($('<h3 class="chart-title">').text(data_name));
 			var svg = div.append("svg")
@@ -481,6 +481,15 @@
 			var line = d3.line()
 			    .x(function(d) { return x(d['key']); })
 			    .y(function(d) { return y(d['value']); });
+
+			var tip = d3.tip()
+			  .attr('class', 'd3-tip')
+			  .offset([-10, 0])
+			  .html(function(d) {
+			    return "<strong>" + to_string(d['key']) + ":</strong> <span style='color:red'>" + d['value'] + "</span>";
+			  });
+
+			svg.call(tip);
 
 			var data = [];
 			$.each(entry_data, function(k, v) {
@@ -517,6 +526,21 @@
 			  .attr("stroke-linecap", "round")
 			  .attr("stroke-width", 1.5)
 			  .attr("d", line);
+
+			g.selectAll(".circle")
+			     .data(data)
+			     .enter()
+			     .append("svg:circle")
+			     .attr("class", "circle")
+			     .attr("cx", function (d) {
+			        return x(d['key']);
+			     })
+			     .attr("cy", function (d) {
+			       return y(d['value']);
+			     })
+			     .attr("r", 5)
+			     .on('mouseover', tip.show)
+			     .on('mouseout', tip.hide)
 		}
 
 		function createOrGetPerson(id, name) {
