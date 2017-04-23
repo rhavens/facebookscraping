@@ -19,24 +19,170 @@
 		'Friday':5,
 		'Saturday':6
 	};
+	MajorTo2016Count = {
+		'ACS Certified Chemistry Major': 8,
+		'Africana Studies': 3,
+		'American Studies': 29,
+		'Anthropology': 17,
+		'Applied Mathematics': 7,
+		'Applied Physics': 1,
+		'Arabic': 3,
+		'Archaeology': 4,
+		'Architectural Studies': 4,
+		'Art History': 17,
+		'Asian Studies': 2,
+		'Astrophysics': 2,
+		'Biochemistry': 31,
+		'Biology': 112,
+		'Biomedical Engineering': 21,
+		'Biopsychology': 54,
+		'Chemical Engineering': 34,
+		'Chemical Physics': 1,
+		'Chemistry': 10,
+		'Child Study and Human Development': 45,
+		'Chinese': 6,
+		'Civil Engineering': 16,
+		'Classics': 8,
+		'Cognitive and Brain Sciences': 26,
+		'Community Health': 72,
+		'Computer Engineering': 11,
+		'Computer Science': 116,
+		'Drama': 15,
+		'Economics': 144,
+		'Electrical Engineering': 25,
+		'Engineering Physics': 1,
+		'Engineering Psychology': 12,
+		'English': 73,
+		'Environmental Engineering': 6,
+		'Environmental Studies': 34,
+		'Film & Media Studies': 5,
+		'French': 20,
+		'Geological Sciences': 3,
+		'Geology': 4,
+		'German Language and Literature': 1,
+		'German Studies': 3,
+		'Greek': 0,
+		'Greek & Latin': 2,
+		'History': 39,
+		'International Letters & Visual Studies': 12,
+		'International Relations': 172,
+		'Italian Studies': 5,
+		'Japanese': 1,
+		'Judaic Studies': 3,
+		'Latin': 1,
+		'Latin American Studies': 0,
+		'Mathematics': 32,
+		'Mechanical Engineering': 54,
+		'Middle Eastern Studies': 1,
+		'Music': 13,
+		'Other Engineering': 2,
+		'Peace and Justice Studies': 19,
+		'Philosophy': 23,
+		'Physics': 12,
+		'Plan of Study/Interdisciplinary Studies': 6,
+		'Political Science': 67,
+		'Psychology': 77,
+		'Psychology - Clinical': 29,
+		'Quantitative Economics': 44,
+		'Religion': 2,
+		'Russian and East European Studies': 6,
+		'Russian Language and Literature': 0,
+		'Sociology': 34,
+		'Spanish': 30,
+		'Women\'s, Gender, and Sexuality Studies': 9,
+		'Undecided': 0,
+		'Fine Arts': 88,
+	};
+	MajorToCategory = {
+		'ACS Certified Chemistry Major': 'Math & Science',
+		'Africana Studies': 'Interdisciplinary',
+		'American Studies': 'Interdisciplinary',
+		'Anthropology': 'Social Sciences',
+		'Applied Mathematics': 'Math & Science',
+		'Applied Physics': 'Math & Science',
+		'Arabic': 'Languages',
+		'Archaeology': 'Social Sciences',
+		'Architectural Studies': 'Arts',
+		'Art History': 'Arts',
+		'Asian Studies': 'Interdisciplinary',
+		'Astrophysics': 'Math & Science',
+		'Biochemistry': 'Math & Science',
+		'Biology': 'Math & Science',
+		'Biomedical Engineering': 'Engineering',
+		'Biopsychology': 'Interdisciplinary',
+		'Chemical Engineering': 'Engineering',
+		'Chemical Physics': 'Math & Science',
+		'Chemistry': 'Math & Science',
+		'Child Study and Human Development': 'Social Sciences',
+		'Chinese': 'Languages',
+		'Civil Engineering': 'Engineering',
+		'Classics': 'Humanities',
+		'Cognitive and Brain Sciences': 'Interdisciplinary',
+		'Community Health': 'Social Sciences',
+		'Computer Engineering': 'Engineering',
+		'Computer Science': 'Engineering',
+		'Drama': 'Arts',
+		'Economics': 'Social Sciences',
+		'Electrical Engineering': 'Engineering',
+		'Engineering Physics': 'Engineering',
+		'Engineering Psychology': 'Interdisciplinary',
+		'English': 'Humanities',
+		'Environmental Engineering': 'Engineering',
+		'Environmental Studies': 'Interdisciplinary',
+		'Film & Media Studies': 'Interdisciplinary',
+		'French': 'Languages',
+		'Geological Sciences': 'Math & Science',
+		'Geology': 'Math & Science',
+		'German Language and Literature': 'Languages',
+		'German Studies': 'Interdisciplinary',
+		'Greek': 'Languages',
+		'Greek & Latin': 'Languages',
+		'History': 'Humanities',
+		'International Letters & Visual Studies': 'Interdisciplinary',
+		'International Relations': 'Interdisciplinary',
+		'Italian Studies': 'Interdisciplinary',
+		'Japanese': 'Languages',
+		'Judaic Studies': 'Interdisciplinary',
+		'Latin': 'Languages',
+		'Latin American Studies': 'Interdisciplinary',
+		'Mathematics': 'Math & Science',
+		'Mechanical Engineering': 'Engineering',
+		'Middle Eastern Studies': 'Interdisciplinary',
+		'Music': 'Arts',
+		'Other Engineering': 'Engineering',
+		'Peace and Justice Studies': 'Interdisciplinary',
+		'Philosophy': 'Humanities',
+		'Physics': 'Math & Science',
+		'Plan of Study/Interdisciplinary Studies': 'Interdisciplinary',
+		'Political Science': 'Social Sciences',
+		'Psychology': 'Social Sciences',
+		'Psychology - Clinical': 'Social Sciences',
+		'Quantitative Economics': 'Social Sciences',
+		'Religion': 'Humanities',
+		'Russian and East European Studies': 'Interdisciplinary',
+		'Russian Language and Literature': 'Languages',
+		'Sociology': 'Social Sciences',
+		'Spanish': 'Languages',
+		'Women\'s, Gender, and Sexuality Studies': 'Interdisciplinary',
+		'Undecided': 'Undecided',
+		'Fine Arts': 'Special Studies',
+	};
 
 	$(document).ready(function() {
 		var refreshPending = false;
-		makeDataRequest(false);
+		makeDataRequest();
 
 		$('#data-refresh').on('click', function(e) {
 			console.log(e);
 			if (!refreshPending) {
-				makeDataRequest(false);
+				makeDataRequest();
 			}
 		});
 
-		function makeDataRequest(is_retry) {
+		function makeDataRequest() {
 			refreshPending = true;
-			console.log(is_retry);
-			additional_text = (is_retry ? "?retry=1" : "");
 			return $.ajax({
-				url: '/data-check' + additional_text,
+				url: '/data-check',
 				contentType: 'text/plain',
 				dataType: 'json',
 				method: 'GET',
@@ -55,32 +201,18 @@
 				if ('updated_time' in data) {
 					GlobalData['updated_time'] = data['updated_time'];
 				}
-				// if this data is stale, initiate a request for new data
-				if ('stale' in data) {
-					if (data['stale'] === '1') {
-						console.log('refreshSuccess stale');
-						$.ajax({
-							url: '/data-refresh',
-							contentType: 'text/plain',
-							dataType: 'json',
-							method: 'GET',
-							success: function(data) { newDataReqSuccess(data); },
-							error: function(a, b, c) { newDataReqFailure(a, b, c); }
-						});
-						dataReceived();
-					}
-					else {
-						refreshPending = false;
-						console.log('refreshSuccess success');
-						dataReceived();
-					}
+				if ('namedata' in data) {
+					GlobalData['namedata'] = data['namedata'];
 				}
-
+				// if this data is stale, initiate a request for new data
+				refreshPending = false;
+				console.log('refreshSuccess success');
+				dataReceived();
 			}
 			else {
-				// we are not receiving data because this is a request for data we already possess
+				// we are not receiving data somehow
 				setTimeout(function() {
-					makeDataRequest(true);
+					makeDataRequest();
 				}, 15000); // wait 15 seconds before trying again
 			}
 
@@ -88,38 +220,6 @@
 
 		// handle error TODO add retries
 		function refreshError(jqXHR, textStatus, errorThrown) {
-			console.log(jqXHR, textStatus, errorThrown);
-			$.ajax({
-				url: '/data-refresh',
-				contentType: 'text/plain',
-				dataType: 'json',
-				method: 'GET',
-				success: function(data) { newDataReqSuccess(data); },
-				error: function(a, b, c) { newDataReqFailure(a, b, c); }
-			});
-		}
-
-		function newDataReqSuccess(data) {
-			// someone else has initiated a request for data already
-			console.log(data);
-			if ('lock' in data) {
-				console.log('newDataReqSuccess lock')
-				setTimeout(function() {
-					makeDataRequest(true);
-				}, 15000); // wait 15 seconds before trying again
-			}
-			else {
-				GlobalData['posts'] = data['data'];
-				if ('updated_time' in data) {
-					GlobalData['updated_time'] = data['updated_time'];
-				}
-				refreshPending = false;
-				console.log('newDataReqSuccess no lock');
-				dataReceived();
-			}
-		}
-
-		function newDataReqFailure(jqXHR, textStatus, errorThrown) {
 			refreshPending = false;
 			console.log('newDataReqFailure');
 			console.log(jqXHR, textStatus, errorThrown);
