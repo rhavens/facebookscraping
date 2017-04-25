@@ -12,7 +12,10 @@
     text-align: center;
 }
 
-
+#simvis {
+  height: 100%;
+  width: 100%;
+}
 
 
 
@@ -108,4 +111,21 @@ svg {
 .circle:hover {
     stroke: blue;
     stroke-width: 10px;
+}
+
+/***
+    Node Styles 
+                ***/
+.link {
+    stroke-width: 1.5px;
+}
+
+.node {
+    cursor: move;
+    stroke: #000;
+    stroke-width: 1.5px;
+}
+
+.node.fixed {
+    stroke-width: 3px;
 }

@@ -50,8 +50,11 @@ if (mongo_uri):
 
 @app.route('/', methods=['GET'])
 def index():
-    sys.stdout.flush() # debugging heroku issue where stdout is buffered
     return app.send_static_file('static/index.html')
+
+@app.route('/simvis', methods=['GET'])
+def simvis():
+    return app.send_static_file('static/simvis.html')
 
 
 @app.route('/js/<path:path>', methods=['GET'])

@@ -2,22 +2,22 @@
 	GlobalData = {'posts': null, 'people': null, 'updated_time': null, 'metadata': {}}
 
 	WeekdayEnum = {
-		0: 'Sunday',
-		1: 'Monday',
-		2: 'Tuesday',
-		3: 'Wednesday',
-		4: 'Thursday',
-		5: 'Friday',
-		6: 'Saturday'
+		6: 'Sunday',
+		0: 'Monday',
+		1: 'Tuesday',
+		2: 'Wednesday',
+		3: 'Thursday',
+		4: 'Friday',
+		5: 'Saturday'
 	};
 	ReverseWeekdayEnum = {
-		'Sunday':0,
-		'Monday':1,
-		'Tuesday':2,
-		'Wednesday':3,
-		'Thursday':4,
-		'Friday':5,
-		'Saturday':6
+		'Sunday':6,
+		'Monday':0,
+		'Tuesday':1,
+		'Wednesday':2,
+		'Thursday':3,
+		'Friday':4,
+		'Saturday':5
 	};
 	MajorTo2016Count = {
 		'ACS Certified Chemistry Major': 8,
@@ -188,6 +188,17 @@
 				method: 'GET',
 				success: function(data) { refreshSuccess(data); },
 				error: function(a, b, c) { refreshError(a, b, c); }
+			});
+		}
+
+		function getData(field, callback, error=refreshError) {
+			return $.ajax({
+				url: '/get_data?field=' + field,
+				contentType: 'text/plain',
+				dataType: 'json',
+				method: 'GET',
+				success: function(data) { callback(data['data']); },
+				error: function(a, b, c) { error(a, b, c); }
 			});
 		}
 
@@ -396,7 +407,8 @@
 		}
 
 		function weekdaySort(a, b) {
-			return ReverseWeekdayEnum[a['key']] - ReverseWeekdayEnum[b['key']];
+			// return ReverseWeekdayEnum[a['key']] - ReverseWeekdayEnum[b['key']];
+			return hourSort(a, b); // stored as numbers now
 		}
 
 		function hourSort(a, b) {
@@ -407,73 +419,47 @@
 			return formatAMPM(a);
 		}
 
+		function stringifyWeekday(a) {
+			return WeekdayEnum[a];
+		}
+
 		function noop(a) {
 			return a;
 		}
-		////////////
-
-		// this function is gross disgusting and ugly and exactly why I don't want to do 
-		// UI/UX for a living
-		// but it's really simple and gets the job done, so who can blame me for writing a simple function eh?
+		
+		// update: this function is now beautiful
 		function displayTimeData() {
 			console.log('displaytimedata')
-			var dates_to_counts = {};
-			var dates_to_like_counts = {};
-			var dates_to_avg_likes = {};
-			var weekday_to_counts = {};
-			var weekday_to_like_counts = {};
-			var weekday_to_avg_likes = {};
-			var hour_to_counts = {};
-			var hour_to_like_counts = {};
-			var hour_to_avg_likes = {};
-			for (var i = 0; i < 24; i++) {
-				hour_to_counts[i] = 0;
-				hour_to_like_counts[i] = 0;
-				hour_to_avg_likes[i] = 0;
-			}
-			var date;
-			var datestr;
-			var weekday;
-			var hour;
-			for (var i = GlobalData['posts'].length - 1; i >= 0; i--) {
-				date = GlobalData['posts'][i]['created_time'];
-				datestr = String(date.getMonth() +  1) + '/' + String(date.getDate());
-				weekday = WeekdayEnum[date.getDay()];
-				hour = date.getHours();
-				if (datestr in dates_to_counts) {
-					dates_to_counts[datestr] += 1;
-					dates_to_like_counts[datestr] += GlobalData['posts'][i]['total_reactions']
-				}
-				else {
-					dates_to_counts[datestr] = 1;
-					dates_to_like_counts[datestr] = GlobalData['posts'][i]['total_reactions']
-				}
-				if (weekday in weekday_to_counts) {
-					weekday_to_counts[weekday] += 1;
-					weekday_to_like_counts[weekday] += GlobalData['posts'][i]['total_reactions']
-				}
-				else {
-					weekday_to_counts[weekday] = 1;
-					weekday_to_like_counts[weekday] = GlobalData['posts'][i]['total_reactions']
-				}
-				hour_to_counts[hour] += 1;
-				hour_to_like_counts[hour] += GlobalData['posts'][i]['total_reactions']
-				dates_to_avg_likes[datestr + '/' + String(date.getFullYear())] = Math.round(dates_to_like_counts[datestr]*1.0 / dates_to_counts[datestr]);
-				weekday_to_avg_likes[weekday] = Math.round(weekday_to_like_counts[weekday]*1.0 / weekday_to_counts[weekday]);
-				hour_to_avg_likes[hour] = Math.round(hour_to_like_counts[hour]*1.0 / hour_to_counts[hour]);
-			}
 
-			console.log(dates_to_avg_likes);
-
-			displayBarChart(dates_to_counts, "Posts by day", sortByDate, noop, true);
-			displayBarChart(dates_to_like_counts, "Likes by day", sortByDate, noop, true);
-			displayLineGraph(dates_to_avg_likes, "Average likes per day", simpleKeySort, noop);
-			displayBarChart(weekday_to_counts, "Posts by day of the week", weekdaySort, noop);
-			displayBarChart(weekday_to_like_counts, "Likes by day of the week", weekdaySort, noop);
-			displayBarChart(weekday_to_avg_likes, "Average likes per day of the week", weekdaySort, noop);
-			displayBarChart(hour_to_counts, "Posts by hour", hourSort, stringifyHour, true);
-			displayBarChart(hour_to_like_counts, "Likes by hour", hourSort, stringifyHour, true);
-			displayBarChart(hour_to_avg_likes, "Average likes per hour", hourSort, stringifyHour, true);
+			// display XX chart: 
+			// function(data, title, keySortMethod, keyStringifyMethod, bRotateLabels)
+			getData('dates_to_counts', function(data) { 
+				displayBarChart(data, "Posts per day", sortByDate, noop, true); 
+			});
+			getData('dates_to_like_counts', function(data) { 
+				displayBarChart(data, "Likes per day", sortByDate, noop, true); 
+			});
+			getData('dates_to_avg_likes', function(data) { 
+				displayLineGraph(data, "Average likes per day", simpleKeySort, noop); 
+			});
+			getData('weekday_to_counts', function(data) { 
+				displayBarChart(data, "Posts by day of the week", weekdaySort, stringifyWeekday); 
+			});
+			getData('weekday_to_like_counts', function(data) { 
+				displayBarChart(data, "Likes by day of the week", weekdaySort, stringifyWeekday); 
+			});
+			getData('weekday_to_avg_likes', function(data) { 
+				displayBarChart(data, "Average likes per day of the week", weekdaySort, stringifyWeekday); 
+			});
+			getData('hour_to_counts', function(data) { 
+				displayBarChart(data, "Posts by hour", hourSort, stringifyHour, true);
+			});
+			getData('hour_to_like_counts', function(data) { 
+				displayBarChart(data, "Total likes by hour", hourSort, stringifyHour, true); 
+			});
+			getData('hour_to_avg_likes', function(data) { 
+				displayBarChart(data, "Average likes per hour", hourSort, stringifyHour, true); 
+			});
 		}
 
 		// modular function to create and display a bar chart
