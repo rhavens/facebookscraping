@@ -35,10 +35,12 @@ RUNNING_ENVIRONMENT = os.getenv('RUNNING_ENVIRONMENT').strip()
 
 
 # if we are running in a heroku environment, or have a shared db, connect to that
-if (mongo_uri):
+if (mongo_uri and RUNNING_ENVIRONMENT == 'production'):
     with app.app_context():
         assert db_name is not None # I'll eat a sock if this throws an error
         db = MongoClient(mongo_uri)[db_name]
+else:
+    db = MongoClient('localhost', 27017).db
 # # else try to connect to local mongo instance
 # else:
 # with app.app_context():

@@ -32,7 +32,11 @@
 		function displaySimilarityGraph(simmatrix, postdata) {
 			console.log("Displaying similarity graph");
 			visualizeSocialNetwork(simmatrix, postdata);
-			// visualizeSocialNetwork();
+			force.on('end', function(d) { force.nodes().forEach(function(v) {
+				v.fixed = true;
+				});
+				force.alpha(-1);
+			});
 		}
 
 		///////////////
@@ -52,8 +56,10 @@
 				postdata[i]['nid'] = i;
 				postdata[i]['fixed'] = false;
 				postdata[i]['vis'] = true;
-				postdata[i]['r'] = node_radius; // NODE_RADIUS
+				postdata[i]['r'] = node_radius;
+				 // * (postdata[i]['total_reactions'] / 500); // NODE_RADIUS
 			}
+			// postdata[i]['r'] = node_radius;
 		}
 
 		function getMaxSimilarityConnectionIdx(simmatrix, postdata, i) {
@@ -100,7 +106,7 @@
 		nodecolorfun = function(idx) { return colorarr[idx%20]};
 
 		function visualizeSocialNetwork(simmatrix, postdata) {
-			var NODE_RADIUS = 12;
+			var NODE_RADIUS = 18;
 			var LINK_ARROW_OFFSET = 9;
 			var LINK_ARROW_RADIUS_RATIO = 1.2;
 			var nodeFillColor = nodecolorfun;
@@ -122,12 +128,6 @@
 			var group = svg.append('g');
 			var linkgroup = group.append('g');
 
-			var nodeHighlight = group.append('rect')
-			    .attr('width',NODE_RADIUS*4)
-			    .attr('height',NODE_RADIUS*4)
-			    .attr('fill-opacity', 0)
-			    .style('fill', function(d) { return nodeFillColor(0)});
-    		
     		var imagegroup = group.append('g');
 			// var nodegroup = group.append('g');
 
@@ -147,10 +147,10 @@
 			                             // height is longer so gravity drags out graph
 			    // .linkStrength(2) // not useful
 			    // .friction(0.3) // default value is best
-			    .linkDistance(function(d) { return 50; })
+			    .linkDistance(function(d) { return 100; })
 			    // helps nodes with lots of children keep clear of clutter
 			    .charge(function(d) { return -300; })
-			    .chargeDistance(300)
+			    .chargeDistance(500)
 			    .gravity(0.01)
 			    .theta(0.8)
 			    // .alpha(0.1)
@@ -162,7 +162,7 @@
 			    .attr('id', function(d) { return d; })
 			    .attr('viewBox', '0 -5 10 10')
 			    .attr('refX', function(d) { 
-			        return 1 * NODE_RADIUS *
+			        return 2 * NODE_RADIUS *
 			            LINK_ARROW_RADIUS_RATIO + 
 			            LINK_ARROW_OFFSET
 			     })
@@ -170,7 +170,7 @@
 			    .attr('markerWidth', 6)
 			    .attr('markerHeight', 6)
 			    .attr('orient', 'auto')
-			    .attr('fill',function(d) { return nodeFillColor(1); })
+			    .attr('fill',function(d) { return nodeFillColor(0); })
 			  .append('svg:path')
 			    .attr('d', 'M0,-5L10,0L0,5');
 
@@ -189,7 +189,7 @@
 			    if (e.ctrlKey || e.shiftKey) {
 			        d3.select(this).classed('fixed', d.fixed = true)
 			    } else {
-			        d3.select(this).classed('fixed', d.fixed = false)
+			        d3.select(this).classed('fixed', d.fixed = true)
 			    }
 			}
 
@@ -211,26 +211,6 @@
 			    }
 			}
 
-			var highlightNode = function(d) {
-			    if (d) {
-			        nodeHighlight[0].parentNode = d;
-			        redrawHighlight();
-			    }
-			}
-
-			var redrawHighlight = this.redrawHighlight = function() {
-			    var d = nodeHighlight[0].parentNode;
-			    if (!d.nid) return;
-			    nodeHighlight.attr('fill-opacity',.5).attr('x', d.x).attr('y', d.y)
-			      .style('fill',nodeFillColor(0));
-		        nodeHighlight.attr('rx',d.r*4).attr('ry',d.r*4);
-		        nodeHighlight.attr('width',d.r*4);
-		        nodeHighlight.attr('height',d.r*4);
-			    var w = nodeHighlight.attr('width');
-			    var h = nodeHighlight.attr('height');
-			    nodeHighlight.attr('transform', 'translate('+[w/-2,h/-2]+')');
-			}
-
 			// good zoom/pan function
 			var zoomHandler = function(newScale) {
 			    scale = d3.event.scale;
@@ -244,9 +224,23 @@
 			// zoom listener
 			var zoom = d3.behavior.zoom()
 			    .center([width/2,height/2])
-			    .scaleExtent([0.05, 10])
+			    .scaleExtent([0.01, 10])
 			    .on('zoom', zoomHandler);
 			container.call(zoom);
+
+			var tip = d3.tip()
+			  .attr('class', 'd3-tip')
+			  .offset([-10, 0])
+			  .html(function(d) {
+			  	if (d['message']) {
+			    	return "<div style='text-align:center;max-width:300px;'><p style='font-weight:initial;'>" + d['message'] + "</p><strong>Total reactions:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
+			    }
+			    else {
+			    	return "<div style='text-align:center;max-width:300px;'><strong>Total reactions:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
+			    }
+			  });
+
+			container.call(tip);
 
 			/***
 			    Force tick
@@ -259,12 +253,10 @@
 			        .attr('x2', function(d) { return d.target.x; })
 			        .attr('y2', function(d) { return d.target.y; });
 
+			    // tip.attr()
+
 			    // node.attr('transform', function(d) { return "translate(" + d.x + "," + d.y + ")"; });
             	image.attr('transform', function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-
-
-			    nodeHighlight.attr('x', nodeHighlight[0].parentNode.x)
-			                 .attr('y', nodeHighlight[0].parentNode.y);
 			});
 
 			// var node = nodegroup.selectAll('.node');
@@ -302,6 +294,8 @@
 			        .style('display','none')
 			        .call(drag)
 			        .on('click', nodeClick)
+			        .on('mouseover', tip.show)
+			        .on('mouseout', tip.hide)
 			        .attr('class', function(d) { if (d.fixed) return 'node node-image fixed context-menu-node'; else return 'node node-image context-menu-node'; });
 
 			    start();
@@ -352,8 +346,6 @@
 			                (d.target.vis && !d.target.visLock) && 
 			                (d.source.vis && !d.source.visLock)); 
 			            }));
-
-			    redrawHighlight();
 
 			    // restart the force
 			    force.start();

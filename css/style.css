@@ -85,6 +85,7 @@ svg {
   background: rgba(0, 0, 0, 0.8);
   color: #fff;
   border-radius: 2px;
+  pointer-events: none;
 }
 
 /* Creates a small triangle extender for the tooltip */
@@ -102,7 +103,7 @@ svg {
 
 /* Style northward tooltips differently */
 .d3-tip.n:after {
-  margin: -1px 0 0 0;
+  margin: -2px 0 0 0;
   top: 100%;
   left: 0;
 }
