@@ -82,6 +82,26 @@
 			return maxIdx;
 		}
 
+		function getMinSimilarityConnectionIdx(simmatrix, postdata, i) {
+			var minSim = 100;
+			var minIdx = -1;
+			for (var k = postdata.length - 1; k >= 0; k-- ) {
+				if (i > k) {
+					if (simmatrix[k][i] < minSim) {
+						minSim = simmatrix[k][i];
+						minIdx = k;
+					}
+				}
+				else if (i < k) {
+					if (simmatrix[i][k] < minSim) {
+						minSim = simmatrix[i][k];
+						minIdx = k;
+					}
+				}
+			}
+			return minIdx;
+		}
+
 		function similaritiesToEdges(simmatrix, postdata) {
 			var edges = [];
 			var len = postdata.length;
@@ -147,7 +167,7 @@
 			                             // height is longer so gravity drags out graph
 			    // .linkStrength(2) // not useful
 			    // .friction(0.3) // default value is best
-			    .linkDistance(function(d) { return 100; })
+			    .linkDistance(function(d) { return 150; })
 			    // helps nodes with lots of children keep clear of clutter
 			    .charge(function(d) { return -300; })
 			    .chargeDistance(500)
@@ -233,10 +253,10 @@
 			  .offset([-10, 0])
 			  .html(function(d) {
 			  	if (d['message']) {
-			    	return "<div style='text-align:center;max-width:300px;'><p style='font-weight:initial;'>" + d['message'] + "</p><strong>Total reactions:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
+			    	return "<div style='text-align:center;max-width:400px;'><p style='font-weight:initial;'>" + d['message'] + "</p><strong>Total likes:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
 			    }
 			    else {
-			    	return "<div style='text-align:center;max-width:300px;'><strong>Total reactions:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
+			    	return "<div style='text-align:center;max-width:400px;'><strong>Total likes:</strong> <span style='color:red'>" + d['total_reactions'] + "</span>";
 			    }
 			  });
 
