@@ -56,8 +56,7 @@
 				postdata[i]['nid'] = i;
 				postdata[i]['fixed'] = false;
 				postdata[i]['vis'] = true;
-				postdata[i]['r'] = node_radius;
-				 // * (postdata[i]['total_reactions'] / 500); // NODE_RADIUS
+				postdata[i]['r'] = node_radius //* (postdata[i]['total_reactions'] / 500); // NODE_RADIUS
 			}
 			// postdata[i]['r'] = node_radius;
 		}
@@ -169,7 +168,7 @@
 			    // .friction(0.3) // default value is best
 			    .linkDistance(function(d) { return 150; })
 			    // helps nodes with lots of children keep clear of clutter
-			    .charge(function(d) { return -300; })
+			    .charge(function(d) { return -300 * (d['total_reactions'] / 500); })
 			    .chargeDistance(500)
 			    .gravity(0.01)
 			    .theta(0.8)
@@ -244,7 +243,7 @@
 			// zoom listener
 			var zoom = d3.behavior.zoom()
 			    .center([width/2,height/2])
-			    .scaleExtent([0.01, 10])
+			    .scaleExtent([0.001, 10])
 			    .on('zoom', zoomHandler);
 			container.call(zoom);
 
