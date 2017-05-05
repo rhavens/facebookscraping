@@ -243,7 +243,7 @@
 			// zoom listener
 			var zoom = d3.behavior.zoom()
 			    .center([width/2,height/2])
-			    .scaleExtent([0.001, 10])
+			    .scaleExtent([0.01, 30])
 			    .on('zoom', zoomHandler);
 			container.call(zoom);
 
