@@ -2,7 +2,7 @@
 	$(document).ready(function() {
 		getData('post_similarity_matrix', function(matrix) {
 			getData('post_similarity_postdata', function(postdata) {
-				postdata = postdata.filter(function(d) { return d['total_reactions'] > 500; });
+				postdata = postdata.filter(function(d) { return d['total_reactions'] > 400; });
 				displaySimilarityGraph(matrix, postdata);
 			});
 		});
@@ -168,7 +168,7 @@
 			    // .friction(0.3) // default value is best
 			    .linkDistance(function(d) { return 150; })
 			    // helps nodes with lots of children keep clear of clutter
-			    .charge(function(d) { return -300 * (d['total_reactions'] / 500); })
+			    .charge(function(d) { return -300 * (d['total_reactions'] / 400); })
 			    .chargeDistance(500)
 			    .gravity(0.01)
 			    .theta(0.8)
