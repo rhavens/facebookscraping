@@ -2,7 +2,7 @@
 	$(document).ready(function() {
 		getData('post_similarity_matrix', function(matrix) {
 			getData('post_similarity_postdata', function(postdata) {
-				postdata = postdata.filter(function(d) { return d['total_reactions'] > 400; });
+				postdata = postdata.filter(function(d) { return d['total_reactions'] > 500; });
 				displaySimilarityGraph(matrix, postdata);
 			});
 		});
@@ -45,6 +45,7 @@
 
 		// Invariant: matrix first term is smaller than matrix second term
 		function similarity(simmatrix, i, j) {
+			console.log(i, j)
 			if (i < j) {
 				return simmatrix[i][j];
 			}
@@ -125,6 +126,7 @@
 		nodecolorfun = function(idx) { return colorarr[idx%20]};
 
 		function visualizeSocialNetwork(simmatrix, postdata) {
+			console.log(simmatrix);
 			var NODE_RADIUS = 18;
 			var LINK_ARROW_OFFSET = 9;
 			var LINK_ARROW_RADIUS_RATIO = 1.2;
@@ -168,7 +170,7 @@
 			    // .friction(0.3) // default value is best
 			    .linkDistance(function(d) { return 150; })
 			    // helps nodes with lots of children keep clear of clutter
-			    .charge(function(d) { return -300 * (d['total_reactions'] / 400); })
+			    .charge(function(d) { return -300 * (d['total_reactions'] / 500); })
 			    .chargeDistance(500)
 			    .gravity(0.01)
 			    .theta(0.8)

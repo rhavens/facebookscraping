@@ -180,15 +180,17 @@
 		});
 
 		function makeDataRequest() {
-			refreshPending = true;
-			return $.ajax({
-				url: '/data-check',
-				contentType: 'text/plain',
-				dataType: 'json',
-				method: 'GET',
-				success: function(data) { refreshSuccess(data); },
-				error: function(a, b, c) { refreshError(a, b, c); }
-			});
+			displayTimeData();
+			// TODO update prod to show other data
+			// refreshPending = true;
+			// return $.ajax({
+			// 	url: '/data-check',
+			// 	contentType: 'text/plain',
+			// 	dataType: 'json',
+			// 	method: 'GET',
+			// 	success: function(data) { refreshSuccess(data); },
+			// 	error: function(a, b, c) { refreshError(a, b, c); }
+			// });
 		}
 
 		function getData(field, callback, error=refreshError) {
